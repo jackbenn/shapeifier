@@ -1,28 +1,30 @@
 import numpy as np
+from PIL import Image, ImageDraw
 
 class Figure:
     n_genes = 50
-    mutation_rate = 0.2
-    mutation_prop = 0.1
+    mutation_rate = 0.02
+    mutation_prop = 0.01
+    size = 224
 
     def __init__(self, genes=None):
-        if genes == None:
+        if genes is None:
             self.genes = np.zeros((self.n_genes, 7))
             # center
-            self.genes[:, [0, 1]] = np.random.rand(n_genes, 2)
+            self.genes[:, [0, 1]] = np.random.rand(self.n_genes, 2)
             # radius
-            self.genes[:, [2]] = np.random.exponential(0.1, (n_genes, 1))
+            self.genes[:, [2]] = np.random.exponential(0.1, (self.n_genes, 1))
             # color
-            self.genes[:, [3, 4, 5]] = np.random.rand(n_genes, 3)
+            self.genes[:, [3, 4, 5]] = np.random.rand(self.n_genes, 3)
             # zorder
-            self.genes[:, [6]] = np.random.randn(n_genes, 1)
+            self.genes[:, [6]] = np.random.randn(self.n_genes, 1)
         else:
             self.genes = genes
 
     def clone_and_mutate(self):
         clone = Figure(self.genes)
         clone.genes += (np.random.randint(0, 2, (self.n_genes, 7)) *
-                        np.randn(self.n_genes, 7) * self.mutation_rate)
+                        np.random.randn(self.n_genes, 7) * self.mutation_rate)
         return clone
     
     def breed(self, other):
@@ -33,4 +35,18 @@ class Figure:
         return Figure(new_genes)
     
     def draw(self, size):
-        pass
+        im = Image.new('RGB', (self.size, self.size))
+        draw = ImageDraw.Draw(im)
+        sorted_genes = self.genes[np.argsort(self.genes[:, 6])]
+        base_coords = size * np.array([[-1, -1], [1, 1]])
+        for gene in sorted_genes:
+            coords = gene[2] * base_coords
+            coords = (coords + size * gene[[0,1]]).flatten().tolist()
+            color = tuple((gene[[3,4,5]] * 255).astype(int))
+            #print(color)
+            #print(coords)
+            #print()              
+            draw.ellipse(coords, color)
+        return im
+                        
+            
