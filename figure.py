@@ -3,13 +3,15 @@ from scipy import stats
 import random
 from PIL import Image, ImageDraw
 
+
 class Population:
     n_figures = 50
+
     def __init__(self):
         self.figures = []
         for i in range(self.n_figures):
             self.figures.append(Figure())
-    
+
     def score_and_sort(self, model, target):
         '''Score figures against a target using a model, and sort
         from best to worst'''
@@ -29,10 +31,10 @@ class Population:
 
         for i, mutater in enumerate(mutaters):
             self.figures[i + 30] = self.figures[mutater].clone_and_mutate()
-        
+
         for i, b1, b2 in zip(range(10), breeders[:10], breeders[10:]):
             self.figures[i + 40] = self.figures[b1].breed(self.figures[b2])
-            self.figures[self.n_figures-1-i] = self.figures[i].clone_and_mutate()
+
 
 class Figure:
     n_genes = 50
@@ -60,14 +62,14 @@ class Figure:
         clone.genes += (stats.bernoulli(self.mutation_prob).rvs((self.n_genes, 7)) *
                         stats.norm(self.mutation_rate).rvs((self.n_genes, 7)))
         return clone
-    
+
     def breed(self, other):
 
         new_genes = np.where(np.random.randint(0, 2, (self.n_genes, 7)),
                              self.genes,
                              other.genes)
         return Figure(new_genes)
-    
+
     def draw(self):
         im = Image.new('RGB', (self.size, self.size))
         draw = ImageDraw.Draw(im)
@@ -75,23 +77,20 @@ class Figure:
         base_coords = self.size * np.array([[-1, -1], [1, 1]])
         for gene in sorted_genes:
             coords = gene[2] * base_coords
-            coords = (coords + self.size * gene[[0,1]]).flatten().tolist()
-            color = tuple((gene[[3,4,5]] * 255).astype(int))
-            #print(color)
-            #print(coords)
-            #print()              
+            coords = (coords + self.size * gene[[0, 1]]).flatten().tolist()
+            color = tuple((gene[[3, 4, 5]] * 255).astype(int))
             draw.ellipse(coords, color)
         return im
 
     def transform(self, model):
         im = self.draw()
         return model.predict(np.array(im)[None, ...]).flatten()
-    
+
     def score(self, model, target):
         '''
         Assume target is normalized already
         '''
         if self.score_ is None:
             transformed = self.transform(model)
-            self.score_ = transformed @ target / np.linalg.norm(transformed) 
+            self.score_ = transformed @ target / np.linalg.norm(transformed)
         return self.score_
