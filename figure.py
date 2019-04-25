@@ -1,10 +1,43 @@
 import numpy as np
+from scipy import stats
+import random
 from PIL import Image, ImageDraw
+
+class Population:
+    n_figures = 50
+    def __init__(self):
+        self.figures = []
+        for i in range(self.n_figures):
+            self.figures.append(Figure())
+    
+    def score_and_sort(self, model, target):
+        '''Score figures against a target using a model, and sort
+        from best to worst'''
+        scores = []
+        for figure in self.figures:
+            scores.append(-figure.score(model, target))
+            print(".", end='')
+        self.figures = [f for _, f in sorted(zip(scores, self.figures),
+                                             key=lambda x:x[0])]
+        print(sorted(scores))
+
+    def purge_and_mutate(self):
+        # first, choose random numbers to mutate/breed
+        weights = 1/(np.arange(20, 50))
+        mutaters = random.choices(range(30), k=10, weights=weights)
+        breeders = random.choices(range(30), k=20, weights=weights)
+
+        for i, mutater in enumerate(mutaters):
+            self.figures[i + 30] = self.figures[mutater].clone_and_mutate()
+        
+        for i, b1, b2 in zip(range(10), breeders[:10], breeders[10:]):
+            self.figures[i + 40] = self.figures[b1].breed(self.figures[b2])
+            self.figures[self.n_figures-1-i] = self.figures[i].clone_and_mutate()
 
 class Figure:
     n_genes = 50
-    mutation_rate = 0.1
-    mutation_prop = 0.1
+    mutation_rate = 0.05
+    mutation_prob = 0.2
     size = 224
 
     def __init__(self, genes=None):
@@ -20,11 +53,12 @@ class Figure:
             self.genes[:, [6]] = np.random.randn(self.n_genes, 1)
         else:
             self.genes = genes
+        self.score_ = None
 
     def clone_and_mutate(self):
         clone = Figure(self.genes.copy())
-        clone.genes += (np.random.randint(0, 2, (self.n_genes, 7)) *
-                        np.random.randn(self.n_genes, 7) * self.mutation_rate)
+        clone.genes += (stats.bernoulli(self.mutation_prob).rvs((self.n_genes, 7)) *
+                        stats.norm(self.mutation_rate).rvs((self.n_genes, 7)))
         return clone
     
     def breed(self, other):
@@ -57,6 +91,7 @@ class Figure:
         '''
         Assume target is normalized already
         '''
-        transformed = self.transform(model)
-        return transformed @ target / np.linalg.norm(transformed) 
-            
+        if self.score_ is None:
+            transformed = self.transform(model)
+            self.score_ = transformed @ target / np.linalg.norm(transformed) 
+        return self.score_
