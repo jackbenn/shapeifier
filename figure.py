@@ -7,39 +7,44 @@ from PIL import Image, ImageDraw
 class Population:
     n_figures = 50
 
-    def __init__(self):
+    def __init__(self, model, target_image):
         self.figures = []
         for i in range(self.n_figures):
             self.figures.append(Figure())
+        self.model = model
+        target_array = np.array(target_image)[None, :, :, 0:3]
+        self.target = model.predict(target_array).flatten()
+        self.target /= np.linalg.norm(self.target)
+        self.scores = None
 
-    def score_and_sort(self, model, target):
+    def score_and_sort(self):
         '''Score figures against a target using a model, and sort
         from best to worst'''
-        scores = []
+        self.scores = []
         for figure in self.figures:
-            scores.append(-figure.score(model, target))
+            self.scores.append(-figure.score(self.model, self.target))
             print(".", end='')
-        self.figures = [f for _, f in sorted(zip(scores, self.figures),
+        self.figures = [f for _, f in sorted(zip(self.scores, self.figures),
                                              key=lambda x:x[0])]
-        print(sorted(scores))
 
     def purge_and_mutate(self):
         # first, choose random numbers to mutate/breed
         weights = 1/(np.arange(20, 50))
-        mutaters = random.choices(range(30), k=10, weights=weights)
-        breeders = random.choices(range(30), k=20, weights=weights)
+        weights /= weights.sum()
+        mutaters = np.random.choice(30, size=15, p=weights, replace=False)
+        breeders = np.random.choice(30, size=10, p=weights, replace=False)
 
         for i, mutater in enumerate(mutaters):
             self.figures[i + 30] = self.figures[mutater].clone_and_mutate()
 
-        for i, b1, b2 in zip(range(10), breeders[:10], breeders[10:]):
-            self.figures[i + 40] = self.figures[b1].breed(self.figures[b2])
+        for i, b1, b2 in zip(range(5), breeders[:5], breeders[5:]):
+            self.figures[i + 45] = self.figures[b1].breed(self.figures[b2])
 
 
 class Figure:
     n_genes = 50
-    mutation_rate = 0.05
-    mutation_prob = 0.2
+    mutation_rate = 0.02
+    mutation_prob = 0.1
     size = 224
 
     def __init__(self, genes=None):
@@ -78,7 +83,7 @@ class Figure:
         for gene in sorted_genes:
             coords = gene[2] * base_coords
             coords = (coords + self.size * gene[[0, 1]]).flatten().tolist()
-            color = tuple((gene[[3, 4, 5]] * 255).astype(int))
+            color = tuple((gene[[3, 4, 5]] * 255).astype(int)) + (10,)
             draw.ellipse(coords, color)
         return im
 
