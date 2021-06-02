@@ -53,7 +53,8 @@ class Figure:
             # center
             self.genes[:, [0, 1]] = np.random.rand(self.n_genes, 2)
             # radius
-            self.genes[:, [2]] = np.random.exponential(0.1, (self.n_genes, 1))
+            self.genes[:, [2]] = np.random.exponential(0.5, (self.n_genes, 1))
+            self.genes[:, 2] = np.clip(self.genes[:, 2], None, 0.1)
             # color
             self.genes[:, [3, 4, 5]] = np.random.rand(self.n_genes, 3)
             # zorder
@@ -66,6 +67,10 @@ class Figure:
         clone = Figure(self.genes.copy())
         clone.genes += (stats.bernoulli(self.mutation_prob).rvs((self.n_genes, 7)) *
                         stats.norm(self.mutation_rate).rvs((self.n_genes, 7)))
+        self.genes[:, 2] = np.clip(self.genes[:, 2], None, 0.1)
+
+        # don't let it get too big
+        
         return clone
 
     def breed(self, other):
